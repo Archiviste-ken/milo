@@ -9,7 +9,16 @@ class GroqClient:
         self.client = Groq(api_key=api_key)
         self.model = model
 
-    def chat(self, messages: list[dict]) -> str:
+        self.messages: list[dict] = []
+
+    def chat(self, user_input: str) -> str:
+
+        self.messages.append(
+            {
+                "role": "user",
+                "content": user_input,
+            }
+        )
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -18,8 +27,20 @@ class GroqClient:
                     "role": "system",
                     "content": SYSTEM_PROMPT,
                 },
-                *messages,
+                *self.messages,
             ],
         )
 
-        return response.choices[0].message.content
+        assistant_message = (
+            response.choices[0].message.content
+            or ""
+        )
+
+        self.messages.append(
+            {
+                "role": "assistant",
+                "content": assistant_message,
+            }
+        )
+
+        return assistant_message
