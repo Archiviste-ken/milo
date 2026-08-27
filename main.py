@@ -15,7 +15,7 @@ def main():
         model="openai/gpt-oss-120b",
     )
 
-    print("🧠 Milo")
+    print("🧠 MILO")
     print("Type 'exit' to quit.\n")
 
     while True:
@@ -25,16 +25,9 @@ def main():
         if user_input.lower() in {"exit", "quit"}:
             break
 
-        response = agent.chat(
-            [
-                {
-                    "role": "user",
-                    "content": user_input,
-                }
-            ]
-        )
+        response = agent.chat(user_input)
 
-        print(f"\nMilo > {response}\n")
+        print(f"\nMILO > {response}\n")
 
 
 if __name__ == "__main__":
