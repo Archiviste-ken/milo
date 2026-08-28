@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
+from app.agent.runner import Agent
 from app.llm.groq_client import GroqClient
 
 
@@ -10,9 +11,17 @@ load_dotenv()
 
 def main():
 
-    agent = GroqClient(
+    llm = GroqClient(
         api_key=os.environ["GROQ_API_KEY"],
-        model="openai/gpt-oss-120b",
+        model=os.getenv(
+            "GROQ_MODEL",
+            "openai/gpt-oss-120b",
+        ),
+    )
+
+    agent = Agent(
+        llm=llm,
+        max_iterations=5,
     )
 
     print("🧠 MILO")
@@ -22,12 +31,30 @@ def main():
 
         user_input = input("You > ")
 
-        if user_input.lower() in {"exit", "quit"}:
+        if user_input.lower() in {
+            "exit",
+            "quit",
+        }:
             break
 
-        response = agent.chat(user_input)
+        if not user_input.strip():
+            continue
 
-        print(f"\nMILO > {response}\n")
+        try:
+
+            response = agent.run(
+                user_input
+            )
+
+            print(
+                f"\nMILO > {response}\n"
+            )
+
+        except Exception as exc:
+
+            print(
+                f"\n❌ Error: {exc}\n"
+            )
 
 
 if __name__ == "__main__":

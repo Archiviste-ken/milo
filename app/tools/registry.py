@@ -1,6 +1,10 @@
 import json
 
 from app.tools.calculator import calculate
+from app.tools.memory_tools import (
+    remember_memory,
+    recall_memory,
+)
 
 
 TOOL_DEFINITIONS = [
@@ -9,9 +13,7 @@ TOOL_DEFINITIONS = [
         "function": {
             "name": "calculate",
             "description": (
-                "Perform a mathematical calculation. "
-                "Use this for arithmetic instead of "
-                "calculating complex arithmetic yourself."
+                "Perform a mathematical calculation."
             ),
             "parameters": {
                 "type": "object",
@@ -19,20 +21,70 @@ TOOL_DEFINITIONS = [
                     "expression": {
                         "type": "string",
                         "description": (
-                            "A mathematical expression, "
-                            "for example: 25 * 4 + 10"
+                            "A mathematical expression."
                         ),
                     }
                 },
                 "required": ["expression"],
+                "additionalProperties": False,
             },
         },
-    }
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "remember_memory",
+            "description": (
+                "Store one durable fact about the user "
+                "for future conversations."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fact": {
+                        "type": "string",
+                        "description": (
+                            "The single fact to store."
+                        ),
+                    }
+                },
+                "required": ["fact"],
+                "additionalProperties": False,
+            },
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "recall_memory",
+            "description": (
+                "Search persistent memory for facts "
+                "relevant to the user's request."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "The information to search for."
+                        ),
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
 
 
 TOOL_FUNCTIONS = {
     "calculate": calculate,
+    "remember_memory": remember_memory,
+    "recall_memory": recall_memory,
 }
 
 
@@ -50,7 +102,6 @@ def execute_tool(
         }
 
     try:
-
         parsed_arguments = json.loads(arguments)
 
         return function(
@@ -58,7 +109,6 @@ def execute_tool(
         )
 
     except Exception as exc:
-
         return {
             "success": False,
             "error": str(exc),
