@@ -1,4 +1,6 @@
+from app.agent.state import AgentState
 from app.prompts import SYSTEM_PROMPT
+
 from app.tools.registry import (
     TOOL_DEFINITIONS,
     execute_tool,
@@ -15,11 +17,15 @@ class Agent:
         self.llm = llm
         self.max_iterations = max_iterations
 
-        self.messages: list[dict] = []
+        self.state = AgentState()
 
     def run(self, user_input: str) -> str:
 
-        self.messages.append(
+        self.state = AgentState(
+            status="running"
+        )
+
+        self.state.messages.append(
             {
                 "role": "user",
                 "content": user_input,
@@ -35,10 +41,12 @@ class Agent:
             self.max_iterations
         ):
 
+            self.state.iteration = iteration + 1
+
             response = self.llm.chat(
                 messages=[
                     system_message,
-                    *self.messages,
+                    *self.state.messages,
                 ],
                 tools=TOOL_DEFINITIONS,
             )
@@ -51,23 +59,33 @@ class Agent:
                     message.content or ""
                 )
 
-                self.messages.append(
+                self.state.messages.append(
                     {
                         "role": "assistant",
                         "content": content,
                     }
                 )
 
+                self.state.status = "completed"
+
                 return content
 
-            self.messages.append(message)
+            self.state.messages.append(
+                message
+            )
 
             for tool_call in message.tool_calls:
 
                 name = tool_call.function.name
-
                 arguments = (
                     tool_call.function.arguments
+                )
+
+                self.state.tool_calls.append(
+                    {
+                        "name": name,
+                        "arguments": arguments,
+                    }
                 )
 
                 print(
@@ -79,11 +97,18 @@ class Agent:
                     arguments,
                 )
 
+                self.state.observations.append(
+                    {
+                        "tool": name,
+                        "result": result,
+                    }
+                )
+
                 print(
                     f"📦 Result: {result}"
                 )
 
-                self.messages.append(
+                self.state.messages.append(
                     {
                         "role": "tool",
                         "tool_call_id": tool_call.id,
@@ -91,6 +116,8 @@ class Agent:
                         "content": str(result),
                     }
                 )
+
+        self.state.status = "max_iterations"
 
         return (
             "I stopped because the agent "
