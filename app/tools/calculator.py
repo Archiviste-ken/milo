@@ -1,5 +1,6 @@
 import ast
 import operator
+from app.tools.tool_result import ToolResult
 
 
 OPERATORS = {
@@ -48,10 +49,9 @@ def _evaluate(node):
     raise ValueError("Invalid expression.")
 
 
-def calculate(expression: str) -> dict:
+def calculate(expression: str) -> ToolResult:
 
     try:
-
         tree = ast.parse(
             expression,
             mode="eval",
@@ -59,14 +59,17 @@ def calculate(expression: str) -> dict:
 
         result = _evaluate(tree.body)
 
-        return {
-            "success": True,
-            "result": result,
-        }
+        return ToolResult(
+            success=True,
+            data={
+                "expression": expression,
+                "result": result,
+            },
+        )
 
     except Exception as exc:
 
-        return {
-            "success": False,
-            "error": str(exc),
-        }
+        return ToolResult(
+            success=False,
+            error=str(exc),
+        )

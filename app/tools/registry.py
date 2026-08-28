@@ -5,6 +5,7 @@ from app.tools.memory_tools import (
     remember_memory,
     recall_memory,
 )
+from app.tools.tool_result import ToolResult
 
 
 TOOL_DEFINITIONS = [
@@ -30,7 +31,6 @@ TOOL_DEFINITIONS = [
             },
         },
     },
-
     {
         "type": "function",
         "function": {
@@ -54,7 +54,6 @@ TOOL_DEFINITIONS = [
             },
         },
     },
-
     {
         "type": "function",
         "function": {
@@ -91,15 +90,15 @@ TOOL_FUNCTIONS = {
 def execute_tool(
     name: str,
     arguments: str,
-) -> dict:
+) -> ToolResult:
 
     function = TOOL_FUNCTIONS.get(name)
 
     if function is None:
-        return {
-            "success": False,
-            "error": f"Unknown tool: {name}",
-        }
+        return ToolResult(
+            success=False,
+            error=f"Unknown tool: {name}",
+        )
 
     try:
         parsed_arguments = json.loads(arguments)
@@ -108,8 +107,20 @@ def execute_tool(
             **parsed_arguments
         )
 
+    except json.JSONDecodeError as exc:
+        return ToolResult(
+            success=False,
+            error=f"Invalid JSON arguments: {exc}",
+        )
+
+    except TypeError as exc:
+        return ToolResult(
+            success=False,
+            error=f"Invalid tool arguments: {exc}",
+        )
+
     except Exception as exc:
-        return {
-            "success": False,
-            "error": str(exc),
-        }
+        return ToolResult(
+            success=False,
+            error=f"Tool execution failed: {exc}",
+        )

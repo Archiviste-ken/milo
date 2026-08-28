@@ -18,6 +18,10 @@ class AgentState:
         default_factory=list
     )
 
+    verifications: list[dict] = field(
+        default_factory=list
+    )
+
     errors: list[str] = field(
         default_factory=list
     )

@@ -1,4 +1,7 @@
+import json
+
 from app.agent.state import AgentState
+from app.agent.verifier import verify_tool_result
 from app.prompts import SYSTEM_PROMPT
 
 from app.tools.registry import (
@@ -77,6 +80,7 @@ class Agent:
             for tool_call in message.tool_calls:
 
                 name = tool_call.function.name
+
                 arguments = (
                     tool_call.function.arguments
                 )
@@ -97,15 +101,33 @@ class Agent:
                     arguments,
                 )
 
+                result_dict = result.to_dict()
+
                 self.state.observations.append(
                     {
                         "tool": name,
-                        "result": result,
+                        "result": result_dict,
+                    }
+                )
+
+                verification = verify_tool_result(
+                    name,
+                    result,
+                )
+
+                self.state.verifications.append(
+                    {
+                        "tool": name,
+                        "verification": verification,
                     }
                 )
 
                 print(
-                    f"📦 Result: {result}"
+                    f"📦 Result: {result_dict}"
+                )
+
+                print(
+                    f"🔍 Verification: {verification}"
                 )
 
                 self.state.messages.append(
@@ -113,13 +135,8 @@ class Agent:
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "name": name,
-                        "content": str(result),
+                        "content": json.dumps(
+                            result_dict
+                        ),
                     }
                 )
-
-        self.state.status = "max_iterations"
-
-        return (
-            "I stopped because the agent "
-            "reached its iteration limit."
-        )

@@ -1,60 +1,61 @@
 from app.memory.store import MemoryStore
+from app.tools.tool_result import ToolResult
 
 
 memory_store = MemoryStore()
 
 
-def remember_memory(fact: str) -> dict:
-    """
-    Save an important fact to persistent memory.
-    """
+def remember_memory(fact: str) -> ToolResult:
 
     fact = fact.strip()
 
     if not fact:
-        return {
-            "success": False,
-            "error": "Memory cannot be empty.",
-        }
+        return ToolResult(
+            success=False,
+            error="Memory cannot be empty.",
+        )
 
     try:
         memory = memory_store.add(fact)
 
-        return {
-            "success": True,
-            "memory": memory,
-        }
+        return ToolResult(
+            success=True,
+            data={
+                "memory": memory,
+            },
+        )
 
     except Exception as exc:
-        return {
-            "success": False,
-            "error": str(exc),
-        }
+
+        return ToolResult(
+            success=False,
+            error=str(exc),
+        )
 
 
-def recall_memory(query: str) -> dict:
-    """
-    Search persistent memory for relevant information.
-    """
+def recall_memory(query: str) -> ToolResult:
 
     query = query.strip()
 
     if not query:
-        return {
-            "success": False,
-            "error": "Query cannot be empty.",
-        }
+        return ToolResult(
+            success=False,
+            error="Query cannot be empty.",
+        )
 
     try:
         results = memory_store.search(query)
 
-        return {
-            "success": True,
-            "results": results,
-        }
+        return ToolResult(
+            success=True,
+            data={
+                "results": results,
+            },
+        )
 
     except Exception as exc:
-        return {
-            "success": False,
-            "error": str(exc),
-        }
+
+        return ToolResult(
+            success=False,
+            error=str(exc),
+        )
