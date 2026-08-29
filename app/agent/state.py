@@ -26,4 +26,10 @@ class AgentState:
         default_factory=list
     )
 
+    plan: list[str] = field(
+        default_factory=list
+    )
+
+    current_step: int = 0
+
     status: str = "idle"
