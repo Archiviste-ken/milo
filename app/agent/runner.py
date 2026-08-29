@@ -1,14 +1,7 @@
-import json
-
 from app.agent.state import AgentState
-from app.agent.verifier import verify_tool_result
 from app.agent.planner import Planner
+from app.agent.executor import PlanExecutor
 from app.prompts import SYSTEM_PROMPT
-
-from app.tools.registry import (
-    TOOL_DEFINITIONS,
-    execute_tool,
-)
 
 
 class Agent:
@@ -22,6 +15,7 @@ class Agent:
         self.max_iterations = max_iterations
 
         self.planner = Planner(llm)
+        self.executor = PlanExecutor()
 
         self.state = AgentState()
 
@@ -32,17 +26,14 @@ class Agent:
         )
 
         # ---------------------------------
-        # 1. Create an LLM-generated plan
+        # 1. CREATE PLAN
         # ---------------------------------
 
         plan = self.planner.create_plan(
             user_input
         )
 
-        self.state.plan = [
-            step.action
-            for step in plan.steps
-        ]
+        self.state.plan = plan.steps
 
         print("\n📋 MILO PLAN")
         print(f"🎯 Goal: {plan.goal}")
@@ -58,158 +49,110 @@ class Agent:
             )
 
         # ---------------------------------
-        # 2. Add user message to state
+        # 2. EXECUTE PLAN
         # ---------------------------------
 
-        self.state.messages.append(
-            {
-                "role": "user",
-                "content": user_input,
-            }
-        )
-
-        system_message = {
-            "role": "system",
-            "content": SYSTEM_PROMPT,
-        }
-
-        # ---------------------------------
-        # 3. Agent execution loop
-        # ---------------------------------
-
-        for iteration in range(
-            self.max_iterations
+        for index, step in enumerate(
+            plan.steps,
+            start=1,
         ):
 
-            self.state.iteration = iteration + 1
+            self.state.current_step = index
 
-            response = self.llm.chat(
-                messages=[
-                    system_message,
-                    *self.state.messages,
-                ],
-                tools=TOOL_DEFINITIONS,
+            print(
+                f"\n⚙️ Step {index}/{len(plan.steps)}"
             )
 
-            message = response.choices[0].message
-
-            # ---------------------------------
-            # 4. No tool call → final answer
-            # ---------------------------------
-
-            if not message.tool_calls:
-
-                content = (
-                    message.content or ""
+            result, verification = (
+                self.executor.execute_step(
+                    step
                 )
-
-                self.state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": content,
-                    }
-                )
-
-                self.state.status = "completed"
-
-                return content
-
-            # ---------------------------------
-            # 5. Store assistant tool request
-            # ---------------------------------
-
-            self.state.messages.append(
-                message
             )
 
             # ---------------------------------
-            # 6. Execute requested tools
+            # 3. RECORD TOOL CALL
             # ---------------------------------
 
-            for tool_call in message.tool_calls:
+            self.state.tool_calls.append(
+                {
+                    "name": step.action,
+                    "arguments": step.arguments,
+                }
+            )
 
-                name = tool_call.function.name
+            # ---------------------------------
+            # 4. RECORD OBSERVATION
+            # ---------------------------------
 
-                arguments = (
-                    tool_call.function.arguments
-                )
+            result_dict = result.to_dict()
 
-                self.state.tool_calls.append(
-                    {
-                        "name": name,
-                        "arguments": arguments,
-                    }
-                )
+            self.state.observations.append(
+                {
+                    "tool": step.action,
+                    "result": result_dict,
+                }
+            )
 
-                print(
-                    f"\n🔧 Tool: {name}"
-                )
+            # ---------------------------------
+            # 5. RECORD VERIFICATION
+            # ---------------------------------
 
-                # Execute
-                result = execute_tool(
-                    name,
-                    arguments,
-                )
+            self.state.verifications.append(
+                {
+                    "tool": step.action,
+                    "verification": verification,
+                }
+            )
 
-                result_dict = result.to_dict()
+            # ---------------------------------
+            # 6. STOP IF TOOL FAILED
+            # ---------------------------------
 
-                # ---------------------------------
-                # 7. Store observation
-                # ---------------------------------
+            if not verification.get(
+                "verified",
+                False,
+            ):
 
-                self.state.observations.append(
-                    {
-                        "tool": name,
-                        "result": result_dict,
-                    }
-                )
+                self.state.status = "failed"
 
-                # ---------------------------------
-                # 8. Verify result
-                # ---------------------------------
-
-                verification = verify_tool_result(
-                    name,
-                    result,
-                )
-
-                self.state.verifications.append(
-                    {
-                        "tool": name,
-                        "verification": verification,
-                    }
-                )
-
-                print(
-                    f"📦 Result: {result_dict}"
-                )
-
-                print(
-                    f"🔍 Verification: {verification}"
-                )
-
-                # ---------------------------------
-                # 9. Send observation back to LLM
-                # ---------------------------------
-
-                self.state.messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "name": name,
-                        "content": json.dumps(
-                            result_dict
-                        ),
-                    }
+                return (
+                    f"MILO could not complete "
+                    f"step {index}: "
+                    f"{step.action}"
                 )
 
         # ---------------------------------
-        # 10. Iteration limit reached
+        # 7. GENERATE FINAL RESPONSE
         # ---------------------------------
 
-        self.state.status = "max_iterations"
+        self.state.status = "completed"
+
+        response = self.llm.chat(
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": user_input,
+                },
+                {
+                    "role": "system",
+                    "content": (
+                        "The requested task has been "
+                        "executed successfully.\n\n"
+                        f"Goal: {plan.goal}\n\n"
+                        "Execution results:\n"
+                        f"{self.state.observations}"
+                    ),
+                },
+            ]
+        )
 
         return (
-            "I stopped because the agent "
-            "reached its iteration limit."
+            response.choices[0]
+            .message
+            .content
+            or ""
         )

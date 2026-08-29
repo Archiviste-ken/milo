@@ -15,11 +15,6 @@ def validate_plan(plan: Plan) -> None:
             "Plan goal cannot be empty."
         )
 
-    if not plan.steps:
-        raise ValueError(
-            "Plan must contain at least one step."
-        )
-
     for step in plan.steps:
 
         if step.action not in ALLOWED_ACTIONS:
