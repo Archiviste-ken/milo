@@ -1,13 +1,12 @@
-from app.tools.registry import execute_tool
+import json
+
 from app.agent.verifier import verify_tool_result
+from app.tools.registry import execute_tool
 
 
 class PlanExecutor:
 
-    def execute_step(
-        self,
-        step,
-    ):
+    def execute_step(self, step):
 
         print(
             f"\n⚙️ Executing: {step.action}"
@@ -15,10 +14,10 @@ class PlanExecutor:
 
         result = execute_tool(
             step.action,
-            __import__("json").dumps(
-                step.arguments
-            ),
+            json.dumps(step.arguments),
         )
+
+        result_dict = result.to_dict()
 
         verification = verify_tool_result(
             step.action,
@@ -26,7 +25,7 @@ class PlanExecutor:
         )
 
         print(
-            f"📦 Result: {result.to_dict()}"
+            f"📦 Result: {result_dict}"
         )
 
         print(

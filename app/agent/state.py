@@ -31,5 +31,10 @@ class AgentState:
     )
 
     current_step: int = 0
+    retry_count: int = 0
+
+    recovery_events: list[dict] = field(
+    default_factory=list
+)
 
     status: str = "idle"
