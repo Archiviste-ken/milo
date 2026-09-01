@@ -26,15 +26,16 @@ class AgentState:
         default_factory=list
     )
 
-    plan: list[str] = field(
+    plan: list = field(
         default_factory=list
     )
 
     current_step: int = 0
+
     retry_count: int = 0
 
     recovery_events: list[dict] = field(
-    default_factory=list
-)
+        default_factory=list
+    )
 
     status: str = "idle"
